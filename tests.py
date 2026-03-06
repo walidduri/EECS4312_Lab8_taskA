@@ -179,3 +179,107 @@ def test_a5_buffer_eliminates_small_gaps():
 #################################################################################
 # Add your own additional tests here to cover more cases and edge cases as needed.
 #################################################################################
+def test_a6_earliest_slot_returned_when_free():
+    """
+    AC1: If a 1-hour window is free, return the earliest start time.
+    """
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+    busy = []
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=1, buffer=timedelta(0), candidate_window=None)
+
+    assert_slots_basic_constraints(out, day, working, busy, duration, 1, timedelta(0), None)
+    assert len(out) == 1
+    assert out[0].start_time == time(9, 0)
+
+
+def test_a7_buffer_after_busy_block():
+    """
+    AC2: If a busy block ends at 10:00 and buffer is 10 minutes,
+    the next slot must start at 10:10 or later.
+    """
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [BusyInterval(time(9, 0), time(10, 0))]
+    duration = timedelta(minutes=30)
+    buffer = timedelta(minutes=10)
+
+    out = suggest_slots(day, working, busy, duration, n=3, buffer=buffer, candidate_window=None)
+
+    assert_slots_basic_constraints(out, day, working, busy, duration, 3, buffer, None)
+
+    if len(out) > 0:
+        assert out[0].start_time >= time(10, 10)
+
+
+def test_a8_gap_smaller_than_duration_plus_buffer():
+    """
+    AC3: If a gap is smaller than duration + buffers it must be ignored.
+    """
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [
+        BusyInterval(time(9, 0), time(10, 0)),
+        BusyInterval(time(10, 45), time(12, 0))
+    ]
+    duration = timedelta(minutes=30)
+    buffer = timedelta(minutes=10)
+
+    out = suggest_slots(day, working, busy, duration, n=5, buffer=buffer, candidate_window=None)
+
+    assert_slots_basic_constraints(out, day, working, busy, duration, 5, buffer, None)
+
+    # The gap is too small once buffer is applied
+    assert len(out) == 0
+
+
+def test_a9_no_slots_available_returns_empty():
+    """
+    AC4: If no slots are found, return an empty list.
+    """
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+    busy = [BusyInterval(time(9, 0), time(10, 0))]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=3, buffer=timedelta(0), candidate_window=None)
+
+    assert out == []
+
+
+def test_a10_duration_longer_than_working_window():
+    """
+    Edge Case: meeting duration longer than working hours.
+    Should produce no slots.
+    """
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+    busy = []
+    duration = timedelta(minutes=120)
+
+    out = suggest_slots(day, working, busy, duration, n=3, buffer=timedelta(0), candidate_window=None)
+
+    assert out == []
+
+
+def test_a11_touching_busy_intervals():
+    """
+    Edge Case: adjacent busy intervals should behave like one continuous block.
+    """
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [
+        BusyInterval(time(10, 0), time(10, 30)),
+        BusyInterval(time(10, 30), time(11, 0))
+    ]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=5, buffer=timedelta(0), candidate_window=None)
+
+    assert_slots_basic_constraints(out, day, working, busy, duration, 5, timedelta(0), None)
+
+    # First slot must occur before 10:00 or after 11:00
+    for s in out:
+        assert not (time(10, 0) <= s.start_time < time(11, 0))
