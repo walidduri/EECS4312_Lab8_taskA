@@ -1,4 +1,52 @@
-## Student Name:
-## Student ID: 
+## Student Name: Walid Duri
+## Student ID: 219486596
 
-Requirements #1:
+Problem Understanding
+System purpose: To provide an automated, reliable method for finding available meeting times within a user's workday.
+Inputs to the system: Working hours (start/end), existing busy intervals, required meeting duration, optional buffer time, optional candidate window, and the number of requested slots N.
+Outputs produced by the system: A chronologically sorted list of the next N valid appointment slots.
+Primary goal of the system: To reduce the cognitive load of scheduling by providing deterministic, conflict-free recommendations that respect user boundaries and accessibility needs.
+Assumptions
+A1: All input times are provided as Python datetime objects.
+A2: All time inputs are timezone-naive to prevent comparison errors.
+A3: A day is defined strictly by the provided working hour boundaries.
+A4: Time is evaluated at a 1-minute granularity to ensure consistency.
+A5: If N is greater than the total available slots, the system returns all available slots without error.
+A6: The system assumes the user wants the earliest possible options first unless a candidate window dictates otherwise.
+Functional Requirements
+FR1: The system shall merge overlapping or adjacent busy intervals before calculating availability to ensure no collisions occur.
+FR2: The system shall calculate the intersection of the working hours and the candidate window to define the valid search range.
+FR3: The system shall identify gaps that are at least equal to the sum of the meeting duration and the required buffers.
+FR4: The system shall produce a deterministic, chronologically ordered list of exactly N slots or fewer if N is not available.
+System Constraints
+C1: The system must produce deterministic ordering to ensure stability for the user (Derived from Jane - Predictable ordering).
+C2: All invalid logical inputs such as negative duration must raise a ValueError (Derived from Mo - Explicit edge case handling).
+C3: The system must automatically resolve busy-interval conflicts without user intervention (Derived from Jane - Automatic conflict resolution).
+C4: System behavior must be consistent across boundary scenarios, such as slots starting exactly when a busy interval ends (Derived from Mo - Inconsistent responses pain point).
+C5: The system must not return suggestions outside the intersection of the working day and the candidate window (Derived from Mo - Sensitivity to uncertainty).
+C6: The system must minimize information overload by returning only the requested number of slots (Derived from Jane - Concise outputs).
+C7: All input datetimes must be timezone-naive to ensure consistent comparison (Mo - consistency). 
+C8: Busy intervals that overlap or are back-to-back must be merged into a single block before calculating availability (Jane - automatic conflict resolution).
+Acceptance Criteria
+AC1: Given two valid 60-minute gaps, the system must always return the one with the earlier start time first.
+AC2: Given a duration of 0 or less, the system must raise a ValueError.
+AC3: Given overlapping busy intervals 10:00-11:00 and 10:30-11:30, the system must treat the entire block as busy.
+AC4: Given a busy interval ending at 12:00, a suggested slot starting at 12:00 is considered valid.
+AC5: Given a request for N=5 where only 3 slots exist, the system returns a list of length 3.
+AC6: Given a candidate window of 13:00-14:00, no slots starting before 13:00 or ending after 14:00 shall be returned.
+AC7: Given a busy interval ending at 10:00, a suggested slot starting at 10:00 exactly is valid.
+AC8: If fewer than N slots are available, the system must return all found slots without error. 
+Edge Cases
+EC1: Zero availability within the working window. Expected behavior: The system returns an empty list.
+EC2: Meeting duration exceeds search window. Expected behavior: The system returns an empty list as no valid slot can fit.
+EC3: Invalid chronological input such as start time after end time. Expected behavior: The system raises a ValueError.
+EC4: Busy interval start time is after its end time. Behavior: Raise ValueError. 
+EC5: Candidate window start time is after its end time. Behavior: Raise ValueError.
+Traceability
+FR1 -> C3 -> AC3 FR2 -> C5 -> AC6 FR3 -> C4 -> AC4 FR4 -> C1 -> AC1 FR4 -> C6 -> AC5 ValueError logic -> C2 -> AC2
+
+Revision Note 1
+
+Requirement updated: C8, EC4, EC5
+* Reason: During the LLM requirement review, ambiguities were identified regarding overlapping busy intervals and invalid time sequences that would cause inconsistent behavior for Jane and Mo. * 
+Action: Added explicit normalization rules for busy intervals and ValueError triggers for invalid chronological inputs. * Triggered by LLM feedback: Yes.

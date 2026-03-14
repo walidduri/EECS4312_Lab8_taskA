@@ -179,3 +179,147 @@ def test_a5_buffer_eliminates_small_gaps():
 #################################################################################
 # Add your own additional tests here to cover more cases and edge cases as needed.
 #################################################################################
+# Covers C1, AC1
+    def test_deterministic_ordering(self):
+        """
+        Slots must always be returned in chronological order.
+        """
+        working = TimeWindow(
+            datetime(2025, 1, 1, 9, 0),
+            datetime(2025, 1, 1, 12, 0)
+        )
+
+        busy = [
+            BusyInterval(
+                datetime(2025, 1, 1, 10, 0),
+                datetime(2025, 1, 1, 10, 30)
+            )
+        ]
+
+        duration = timedelta(minutes=30)
+
+        slots = suggest_slots(
+            working,
+            busy,
+            duration,
+            n=4
+        )
+
+        start_times = [s.start_time for s in slots]
+
+        self.assertEqual(start_times, sorted(start_times))
+
+
+    # Covers C2, AC2
+    def test_invalid_duration_raises_value_error(self):
+        """
+        Duration <= 0 must raise ValueError.
+        """
+        working = TimeWindow(
+            datetime(2025, 1, 1, 9, 0),
+            datetime(2025, 1, 1, 17, 0)
+        )
+
+        with self.assertRaises(ValueError):
+            suggest_slots(
+                working,
+                [],
+                timedelta(minutes=0),
+                n=3
+            )
+
+
+    # Covers C5, AC6
+    def test_n_larger_than_available_slots(self):
+        """
+        If N exceeds available slots, return all valid slots.
+        """
+        working = TimeWindow(
+            datetime(2025, 1, 1, 9, 0),
+            datetime(2025, 1, 1, 10, 0)
+        )
+
+        busy = [
+            BusyInterval(
+                datetime(2025, 1, 1, 9, 30),
+                datetime(2025, 1, 1, 10, 0)
+            )
+        ]
+
+        duration = timedelta(minutes=20)
+
+        slots = suggest_slots(
+            working,
+            busy,
+            duration,
+            n=10
+        )
+
+        self.assertEqual(len(slots), 1)
+        self.assertEqual(slots[0].start_time, datetime(2025, 1, 1, 9, 0))
+
+
+    # Covers C10, AC7
+    def test_overlapping_busy_intervals(self):
+        """
+        Edge case: overlapping busy intervals should be merged correctly.
+        """
+        working = TimeWindow(
+            datetime(2025, 1, 1, 9, 0),
+            datetime(2025, 1, 1, 12, 0)
+        )
+
+        busy = [
+            BusyInterval(
+                datetime(2025, 1, 1, 9, 30),
+                datetime(2025, 1, 1, 10, 30)
+            ),
+            BusyInterval(
+                datetime(2025, 1, 1, 10, 0),
+                datetime(2025, 1, 1, 11, 0)
+            )
+        ]
+
+        duration = timedelta(minutes=30)
+
+        slots = suggest_slots(
+            working,
+            busy,
+            duration,
+            n=3
+        )
+
+        for slot in slots:
+            self.assertTrue(
+                slot.start_time < datetime(2025, 1, 1, 9, 30) or
+                slot.start_time >= datetime(2025, 1, 1, 11, 0)
+            )
+
+
+    # Covers C12, AC3
+    def test_duration_longer_than_any_gap_returns_empty(self):
+        """
+        Edge case: duration longer than any available gap should return empty list.
+        """
+        working = TimeWindow(
+            datetime(2025, 1, 1, 9, 0),
+            datetime(2025, 1, 1, 10, 0)
+        )
+
+        busy = [
+            BusyInterval(
+                datetime(2025, 1, 1, 9, 15),
+                datetime(2025, 1, 1, 9, 45)
+            )
+        ]
+
+        duration = timedelta(minutes=40)
+
+        slots = suggest_slots(
+            working,
+            busy,
+            duration,
+            n=5
+        )
+
+        self.assertEqual(slots, [])

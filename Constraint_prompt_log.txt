@@ -1,6 +1,5 @@
-## Student Name:
-## Student ID: 
+## Student Name:Walid Duri
+## Student ID: 219486596
 
-Prompt #1: {}
-Response #1: {}
+No LLM was used
 --------------------------------------------------
